@@ -1,0 +1,4 @@
+how your application could be extended to handle the following:
+
+    Products outside of the Household Essentials category.
+    Domains beyond Walgreens.com.

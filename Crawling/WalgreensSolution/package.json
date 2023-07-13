@@ -1,0 +1,15 @@
+{
+  "name": "datafiniti-walgreens",
+  "version": "0.0.1",
+  "description": "A basic web scraper for Walgreens.com",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kevin Knutson",
+  "license": "ISC",
+  "dependencies": {
+    "jquery": "^3.7.0",
+    "puppeteer": "^20.8.2"
+  }
+}

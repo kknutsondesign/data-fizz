@@ -1,5 +1,4 @@
 const puppeteer = require('puppeteer');
-//const ReturnData = require('./datatemplate.js');
 
 (async function(){
     const browser = await puppeteer.launch({ headless: false});
@@ -9,8 +8,9 @@ const puppeteer = require('puppeteer');
     page.goto(baseURL);
     await page.waitForNavigation();
     await setupJquerry(page);
-    let householdScraper = new CategoryScraper(page, "Household & Pet Essentials")
-    await householdScraper.scrape(10);
+    
+    let householdScraper = new CategoryScraper(page, "Household & Pet Essentials");
+    await householdScraper.scrape(15);
 })();
 
 async function setupJquerry(page){
@@ -29,25 +29,27 @@ class CategoryScraper{
     }
 
     async scrape(count){
-        await this.navigateToProductList(this.page);
-        for(let i=1; i<=count;i++){
+        await this.navigateToProductList();
+        for (let i=1; i<=count;i++){
             //click into a product
             await this.page.locator(`#productSection .product-container>li.card__product:nth-of-type(${i}) a:first-of-type`).click();
             await this.page.waitForNavigation();
             
             //Pass control to product scraper
-            this.outData.push(await this.scrapeProductPage());
-            console.log(this.outData);
+            let data = await this.scrapeProductPage();
+            this.outData.push(data);
+
             await this.page.goBack();
         }
+        console.log(this.outData);
     }
 
     async navigateToProductList(){
 
         await this.page.locator('a.menu-trigger').click();
-        await this.page.locator('#menu-shop-products>a').click();
-        await this.page.locator(`#menu-shop-products li>a[data-element-name="${this.category}"]`).click();
-        await this.page.locator(`#menu-shop-products li>.show-next-lvl .right-links li>a[data-element-name="Shop ${this.category}"]`).click();
+        await this.page.locator('#menu-shop-products> a').click();
+        await this.page.locator(`#menu-shop-products li> a[data-element-name="${this.category}"]`).click();
+        await this.page.locator(`#menu-shop-products li> .show-next-lvl .right-links li> a[data-element-name="Shop ${this.category}"]`).click();
         
         //TODO:Need to scroll to element, not doing it by default
         await this.page.locator('#category_Link>li:last-of-type>a').click();
@@ -55,36 +57,34 @@ class CategoryScraper{
     }
 
     async scrapeProductPage(){
-        return "Scraped page";
-    }
-}
+        let pageJSON = await this.page.evaluate(function(){
+            let productName = $('#productTitle')[0].innerText;
+            
+            let priceBox = $('.regular-price span.product__price');
+            //priceBox.children('span+sup').prepend('.')
+            let listPrice = priceBox.children().text();
 
-class ReturnDataTemplate {
-    
-    id = null;
-    productName = null;
-    listPrice = null;
-    description = null;
-    productDimensions = null;
-    imageURLs = null;
-    productUPC = null;
-    sourceURL = null;
+            let description = $('#prodDesc>.inner').text();
+            let productDimensions = $('.universal-product-inches').text();
+            let productUPC = $('#prodSpecCont tr:last-of-type>td').text();
 
-    clearEmtpy(){
+            let imageURLs = [];
+            let thumbnails = $('#thumbnailImages').find('button');
+            for(var button of thumbnails){
+                button.click();
+                imageURLs.push($('#productImg').attr('src'));
+            }
 
-    }
-
-    getData(){
-        this.clearEmtpy();
-        return {
-            id,
-            productName,
-            listPrice,
-            description,
-            productDimensions,
-            imageURLs,
-            productUPC,
-            sourceURL
-        }
+            //return sorted data object
+            return {
+                productName,
+                listPrice,
+                description,
+                productDimensions,
+                imageURLs,
+                productUPC
+            };
+        });
+        return pageJSON;
     }
 }

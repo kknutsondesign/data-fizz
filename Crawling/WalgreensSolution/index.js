@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const fs = require('fs');
 
 (async function(){
     const browser = await puppeteer.launch({ headless: false});
@@ -10,7 +11,14 @@ const puppeteer = require('puppeteer');
     await setupJquerry(page);
     
     let householdScraper = new CategoryScraper(page, "Household & Pet Essentials");
-    await householdScraper.scrape(15);
+    await householdScraper.scrape(1);
+
+    // let otherPage = await browser.newPage();
+    // await otherPage.goto(baseURL);
+    // let beautyScraper = new CategoryScraper(otherPage, "Beauty");
+    // await beautyScraper.scrape(1);
+
+    fs.writeFile(`./${householdScraper.category}_Data.json`, JSON.stringify({products: householdScraper.outData},undefined,4), err =>{console.log(err|null)});
 })();
 
 async function setupJquerry(page){
@@ -61,7 +69,6 @@ class CategoryScraper{
             let productName = $('#productTitle')[0].innerText;
             
             let priceBox = $('.regular-price span.product__price');
-            //priceBox.children('span+sup').prepend('.')
             let listPrice = priceBox.children().text();
 
             let description = $('#prodDesc>.inner').text();

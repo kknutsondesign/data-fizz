@@ -5,7 +5,7 @@ const fs = require('fs');
     const browser = await puppeteer.launch({ headless: true});
     const page = await browser.newPage();
     const baseURL = "http://www.Walgreens.com";
-
+    
     page.goto(baseURL);
     await page.waitForNavigation();
     await page.addScriptTag({url: "https://ajax.googleapis.com/ajax/libs/jquery/3.7.0/jquery.min.js"});
@@ -15,7 +15,7 @@ const fs = require('fs');
     await householdScraper.scrape(15);
     await page.close();
 
-    householdScraper.outData.forEach((dataTemplate)=>Walgreens_DataCleaner.cleanAll(dataTemplate));
+    householdScraper.outData.forEach((dataTemplate)=>Walgreens_DataCleaner.cleanAllValues(dataTemplate));
 
     console.log("Writing data to file");
     fs.writeFile(`./${householdScraper.category}_Data.json`, JSON.stringify({products: householdScraper.outData},undefined,4), err =>{if(err) console.log(err|null)});
@@ -35,16 +35,27 @@ class Walgreens_CategoryScraper{
     async scrape(count){
         console.log("Beginning scrape.");
         await this.navigateToProductList();
-        for (let i=1; i<=count;i++){
-            //click into a product
-            await this.page.locator(`#productSection .product-container>li.card__product:nth-of-type(${i}) a:first-of-type`).click();
-            await this.page.waitForNavigation();
-            
-            //Pass control to product scraper
-            let data = await this.scrapeProductPage(this.page);
-            this.outData.push(data);
 
-            await this.page.goBack();
+        for (let i=1; i<=count;i++){
+            try{
+                //Open tab of product
+                let selector = `#productSection .product-container>li.card__product:nth-of-type(${i}) a:first-of-type`;
+                await this.page.waitForSelector(selector,{timeout: 1000});
+                await this.page.locator(selector).click({button: 'middle'});
+                await new Promise((r)=> setTimeout(r,1000));
+                
+                let pages = await this.page.browser().pages();
+                let tab = pages.at(-1);
+                await tab.waitForNetworkIdle({idleTime: 250});
+                await tab.bringToFront();
+                
+                //Pass control to product scraper
+                await tab.addScriptTag({url: "https://ajax.googleapis.com/ajax/libs/jquery/3.7.0/jquery.min.js"});
+                let data = await this.scrapeProductPage(tab);
+                this.outData.push(data);
+                await tab.close();
+            } 
+            catch(e){console.log("" + e)}
         }
     }
 
@@ -66,23 +77,22 @@ class Walgreens_CategoryScraper{
 
     async scrapeProductPage(page){
         console.log(`Scraping ${this.category} product page.`);
+        
         let pageJSON = await page.evaluate(function(){
-            let productName = $('#productTitle')[0].innerText;
-            
-            let priceBox = $('.regular-price span.product__price');
-            let listPrice = priceBox.children().text();
-
+            let productName = $('#productTitle').text();
+            let _priceBox = $('.regular-price span.product__price');
+            let listPrice = _priceBox.children().text();
             let description = $('#prodDesc>.inner').text();
             let productDimensions = $('.universal-product-inches').text();
             let productUPC = $('#prodSpecCont tr:last-of-type>td').text();
-
+            
             let imageURLs = [];
-            let thumbnails = $('#thumbnailImages').find('button');
-            for(var button of thumbnails){
+            let _thumbnails = $('#thumbnailImages').find('button');
+            for(var button of _thumbnails){
                 button.click();
                 imageURLs.push($('#productImg').attr('src'));
             }
-
+            
             //return sorted data object
             return {
                 productName,
@@ -98,26 +108,34 @@ class Walgreens_CategoryScraper{
 }
 
 class Walgreens_DataCleaner{
-    static cleanAll(obj){
-        Walgreens_DataCleaner.clean_productName(obj);
-        Walgreens_DataCleaner.clean_listPrice(obj);
-        Walgreens_DataCleaner.clean_description(obj);
-        Walgreens_DataCleaner.clean_productDimensions(obj);
-        Walgreens_DataCleaner.clean_imageURLs(obj);
-        Walgreens_DataCleaner.clean_productUPC(obj);
+    static cleanAllValues(obj){
+        try{
+            Walgreens_DataCleaner.clean_productName(obj);
+            Walgreens_DataCleaner.clean_listPrice(obj);
+            Walgreens_DataCleaner.clean_description(obj);
+            Walgreens_DataCleaner.clean_productDimensions(obj);
+            Walgreens_DataCleaner.clean_imageURLs(obj);
+            Walgreens_DataCleaner.clean_productUPC(obj);
+        }
+        catch(e){
+            console.log(""+e);
+        }
     }
 
     static clean_productName(obj){
+        const key = 'productName';
+        if(!key in obj){return;}
          
     }
     static clean_listPrice(obj){
         const key = 'listPrice';
+        if(!key in obj){return;}
 
         let raw = obj[key];
         let out = [];
         //Match all substrings that start with $ followed by digits
         let matches = raw.match(/([$]\d*)+/g);
-        for(var s of matches){
+        for(let s of matches){
             let formatted = s.slice(1,-2)+"."+s.slice(-2);
             out.push(formatted);
         }
@@ -126,6 +144,8 @@ class Walgreens_DataCleaner{
 
     }
     static clean_description(obj){
+        const key = 'description';
+        if(!key in obj){return;}
 
     }
     static clean_productDimensions(obj){
@@ -141,9 +161,13 @@ class Walgreens_DataCleaner{
         obj[key] = out;
     }
     static clean_imageURLs(obj){
+        const key = 'imageURLs';
+        if(!key in obj){return;}
 
     }
     static clean_productUPC(obj){
+        const key = 'productUPC';
+        if(!key in obj){return;}
 
     }
 }

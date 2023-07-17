@@ -1,5 +1,27 @@
-Extending to other Walgrees.com categories:
+Extending to other Walgreens.com categories:
 
+The script already works on other Walgreens.com categories because the store front is standardized
+across their different pages except for `Top Deals`
+
+To scrape all, after the initial setup each category could be scraped by creating new 
+`Walgreens_CategoryScraper`objects and passing them their assigned category.
 
 Extending to other domains:
 
+To extend to other domains would take some generalizing. The same or an extended data object would
+work but the X_DataCleaner was intended handle the quirks of how a specific shopfront presented
+their raw data. Instead a generic formatter could be made that enforces a template instead and would
+be more portable across domains then.
+
+The scrapeProductPage should work with updated selectors or could be setup as a generic that
+accepts a set of selectors for desired data.
+
+The scrape function also would be straightforward to adapt since it mostly handles wrangling
+the browser after the domain specific navigation is done.
+
+Lastly the navigate function would need to be rewritten from scratch or substituted with a direct
+link to the store page of interest.
+
+These pieces could also be separated out and the scraper built as a composed object built with 
+whichever generic functions would be applicable. This way new page scrapers could be 
+tried with off the shelf components before commiting to a wholly new build.

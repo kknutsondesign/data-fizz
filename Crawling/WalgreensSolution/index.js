@@ -17,7 +17,7 @@ const fs = require('fs');
 
     householdScraper.outData.forEach((dataTemplate)=>Walgreens_DataCleaner.cleanAllValues(dataTemplate));
 
-    console.log("Writing data to file");
+    console.log(`Writing data to file: \"${householdScraper.category}_Data.json\"`);
     fs.writeFile(`./${householdScraper.category}_Data.json`, JSON.stringify({products: householdScraper.outData},undefined,4), err =>{if(err) console.log(err|null)});
 })();
 
@@ -42,6 +42,7 @@ class Walgreens_CategoryScraper{
                 let selector = `#productSection .product-container>li.card__product:nth-of-type(${i}) a:first-of-type`;
                 await this.page.waitForSelector(selector,{timeout: 1000});
                 await this.page.locator(selector).click({button: 'middle'});
+                //Allow browser to open tab and register to pages()
                 await new Promise((r)=> setTimeout(r,1000));
                 
                 let pages = await this.page.browser().pages();
@@ -60,19 +61,24 @@ class Walgreens_CategoryScraper{
     }
 
     async navigateToProductList(){
-        console.log('Navigating to shop page.');
-        await this.page.locator('a.menu-trigger').click();
-        await this.page.locator('#menu-shop-products> a').click();
-        await Promise.all( [this.page.locator(`#menu-shop-products li> a[data-element-name="${this.category}"]`).click(),
-                            new Promise(r=> setTimeout(r,2000))]);
-        await this.page.evaluate(function(){
-            $('.default-dropdown.menu-dropdown.show').scrollTop(500);
-        });
-        //Element has trouble being scrolled to, instead is directly handled by JQuery
-        await this.page.locator(`#menu-shop-products li> .show-next-lvl .right-links li> a[data-element-name="Shop ${this.category}"]`).click();
-        
-        await this.page.locator('#category_Link>li:last-of-type>a').click();
-        await this.page.waitForNavigation();
+        try{
+            console.log('Navigating to shop page.');
+            await this.page.locator('a.menu-trigger').click();
+            await this.page.locator('#menu-shop-products> a').click();
+            await Promise.all( [this.page.locator(`#menu-shop-products li> a[data-element-name="${this.category}"]`).click(),
+                                new Promise(r=> setTimeout(r,2000))]);
+            //Element has trouble being scrolled to, instead is directly handled by JQuery
+            await this.page.evaluate(function(){
+                $('.default-dropdown.menu-dropdown.show').scrollTop(500);
+            });
+            await this.page.locator(`#menu-shop-products li> .show-next-lvl .right-links li> a[data-element-name="Shop ${this.category}"]`).click();
+            
+            await this.page.locator('#category_Link>li:last-of-type>a').click();
+            await this.page.waitForNavigation();
+        }
+        catch(e){
+            console.log("Could not navigate to shop page: "+e);
+        }
     }
 
     async scrapeProductPage(page){
@@ -150,6 +156,7 @@ class Walgreens_DataCleaner{
     }
     static clean_productDimensions(obj){
         const key = 'productDimensions';
+        if(!key in obj){return;}
 
         let raw = obj[key];
         let out = "";

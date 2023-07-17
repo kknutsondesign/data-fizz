@@ -8,28 +8,21 @@ const fs = require('fs');
 
     page.goto(baseURL);
     await page.waitForNavigation();
-    await setupJquerry(page);
+    await page.addScriptTag({url: "https://ajax.googleapis.com/ajax/libs/jquery/3.7.0/jquery.min.js"});
     console.log("Page set up.");
 
-    let householdScraper = new CategoryScraper(page, "Household & Pet Essentials");
-    await householdScraper.scrape(10);
+    let householdScraper = new Walgreens_CategoryScraper(page, "Household & Pet Essentials");
+    await householdScraper.scrape(15);
     await page.close();
-    
-    // let otherPage = await browser.newPage();
-    // await otherPage.goto(baseURL);
-    // let beautyScraper = new CategoryScraper(otherPage, "Beauty");
-    // await beautyScraper.scrape(1);
+
+    householdScraper.outData.forEach((dataTemplate)=>Walgreens_DataCleaner.cleanAll(dataTemplate));
 
     console.log("Writing data to file");
     fs.writeFile(`./${householdScraper.category}_Data.json`, JSON.stringify({products: householdScraper.outData},undefined,4), err =>{if(err) console.log(err|null)});
 })();
 
-async function setupJquerry(page){
-    await page.addScriptTag({url: "https://ajax.googleapis.com/ajax/libs/jquery/3.7.0/jquery.min.js"});
-}
 
-
-class CategoryScraper{
+class Walgreens_CategoryScraper{
     outData = [];
     category;
     page;
@@ -48,12 +41,11 @@ class CategoryScraper{
             await this.page.waitForNavigation();
             
             //Pass control to product scraper
-            let data = await this.scrapeProductPage();
+            let data = await this.scrapeProductPage(this.page);
             this.outData.push(data);
 
             await this.page.goBack();
         }
-        console.log(this.outData);
     }
 
     async navigateToProductList(){
@@ -72,9 +64,9 @@ class CategoryScraper{
         await this.page.waitForNavigation();
     }
 
-    async scrapeProductPage(){
-        console.log(`Scraping ${this.category} page.`);
-        let pageJSON = await this.page.evaluate(function(){
+    async scrapeProductPage(page){
+        console.log(`Scraping ${this.category} product page.`);
+        let pageJSON = await page.evaluate(function(){
             let productName = $('#productTitle')[0].innerText;
             
             let priceBox = $('.regular-price span.product__price');
@@ -101,6 +93,74 @@ class CategoryScraper{
                 productUPC
             };
         });
-        return pageJSON;
+        return new Walgreens_Template(pageJSON);
+    }
+}
+
+class Walgreens_DataCleaner{
+    static cleanAll(obj){
+        Walgreens_DataCleaner.clean_productName(obj);
+        Walgreens_DataCleaner.clean_listPrice(obj);
+        Walgreens_DataCleaner.clean_description(obj);
+        Walgreens_DataCleaner.clean_productDimensions(obj);
+        Walgreens_DataCleaner.clean_imageURLs(obj);
+        Walgreens_DataCleaner.clean_productUPC(obj);
+    }
+
+    static clean_productName(obj){
+         
+    }
+    static clean_listPrice(obj){
+        const key = 'listPrice';
+
+        let raw = obj[key];
+        let out = [];
+        //Match all substrings that start with $ followed by digits
+        let matches = raw.match(/([$]\d*)+/g);
+        for(var s of matches){
+            let formatted = s.slice(1,-2)+"."+s.slice(-2);
+            out.push(formatted);
+        }
+        if(out.length > 0)
+            obj[key] = out;
+
+    }
+    static clean_description(obj){
+
+    }
+    static clean_productDimensions(obj){
+        const key = 'productDimensions';
+
+        let raw = obj[key];
+        let out = "";
+        let unit = raw.match(/(inches)|(feet)/g);
+        //Match all substrings that are a series of digits that may contain a period
+        let matches = raw.match(/(\d+.?\d*)+/g);
+        out = matches.join(" x ");
+        out += ` ${unit}`;
+        obj[key] = out;
+    }
+    static clean_imageURLs(obj){
+
+    }
+    static clean_productUPC(obj){
+
+    }
+}
+
+class Walgreens_Template{
+    productName = null;
+    listPrice = null;
+    description = null;
+    productDimensions = null;
+    imageURLs = null;
+    productUPC = null;
+
+    constructor(obj){
+        for(var key in obj){
+            if(this[key] !== undefined){
+                this[key] = obj[key];
+            }
+        }
     }
 }

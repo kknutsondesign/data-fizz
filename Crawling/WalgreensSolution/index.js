@@ -19,6 +19,7 @@ const fs = require('fs');
 
     console.log(`Writing data to file: \"${householdScraper.category}_Data.json\"`);
     fs.writeFile(`./${householdScraper.category}_Data.json`, JSON.stringify({products: householdScraper.outData},undefined,4), err =>{if(err) console.log(err|null)});
+    browser.close();
 })();
 
 
@@ -53,7 +54,7 @@ class Walgreens_CategoryScraper{
                 //Pass control to product scraper
                 await tab.addScriptTag({url: "https://ajax.googleapis.com/ajax/libs/jquery/3.7.0/jquery.min.js"});
                 let data = await this.scrapeProductPage(tab);
-                this.outData.push(data);
+                if(!data.isEmpty()){ this.outData.push(data); }
                 await tab.close();
             } 
             catch(e){console.log("" + e)}
@@ -189,9 +190,17 @@ class Walgreens_Template{
 
     constructor(obj){
         for(var key in obj){
-            if(this[key] !== undefined){
+            if(this[key] !== undefined && obj[key]){
                 this[key] = obj[key];
             }
         }
+        if(this.imageURLs !== null && this.imageURLs.length < 1){
+            //Empty [] is not falsey
+            this.imageURLs = null;
+        }
+    }
+
+    isEmpty(){
+        return !Object.values(this).some((v)=>v);
     }
 }

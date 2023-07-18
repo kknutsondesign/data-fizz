@@ -23,6 +23,7 @@ const fs = require('fs');
 })();
 
 
+
 class Walgreens_CategoryScraper{
     outData = [];
     category;
@@ -78,7 +79,7 @@ class Walgreens_CategoryScraper{
             await this.page.waitForNavigation();
         }
         catch(e){
-            console.log("Could not navigate to shop page: "+e);
+            console.log("Error navigating to shop page: "+e);
         }
     }
 

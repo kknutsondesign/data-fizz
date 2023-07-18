@@ -1,4 +1,4 @@
-DataFizz
+Kevin Knutson DataFizz
 ========
 
-A collection of challenges
+Please navigate to the `Crawling > WalgreensSolution` folder.
